@@ -43,18 +43,28 @@ function addUploadedImageToCanvas(path) {
   const imageUpload = loadImage(path);
   console.log('here');
   console.log(imageUpload);
-  let indexedColorImage;
+  let imageDataList = [];
 
   imageUpload
     .then((img) => {
+      const imageWidth = img.width;
+      const imageHeight = img.height;
       ctx.drawImage(img, 0, 0);
-      const imageUploadData = ctx.getImageData(0, 0, img.width, img.height);
-      indexedColorImage = convertImgDataToIndexedColorImage(
-        imageUploadData,
-        255
-      );
-      writeGifData(indexedColorImage);
-      writeDataToFile('new.gif');
+      imageDataList.push(ctx.getImageData(0, 0, imageWidth, imageHeight));
+
+      ctx.beginPath();
+      ctx.moveTo(75, 50);
+      ctx.lineTo(100, 75);
+      ctx.lineTo(100, 25);
+      ctx.fill();
+      imageDataList.push(ctx.getImageData(0, 0, img.width, img.height));
+
+      const indexedColorImages = imageDataList.map((image) => {
+        return convertImgDataToIndexedColorImage(image, 255);
+      });
+
+      writeGifData(imageWidth, imageHeight, indexedColorImages);
+      writeDataToFile('assets/new.gif'); //TODO: write function to take original name and add .gif
     })
     .catch((err) => {
       console.log('oh no!', err);
@@ -95,15 +105,19 @@ var MyOutputStream = /** @class */ (function () {
 var outputStream = new MyOutputStream();
 
 // Write GIF data to outputStream.
-function writeGifData(indexedColorImage) {
+function writeGifData(imageWidth, imageHeight, indexedColorImages) {
   console.log('writing gif data');
   var gifWriter = new gw.GifWriter(outputStream);
   gifWriter.writeHeader();
   gifWriter.writeLogicalScreenInfo({
-    width: indexedColorImage.width,
-    height: indexedColorImage.height,
+    width: imageWidth,
+    height: imageHeight,
   });
-  gifWriter.writeTableBasedImage(indexedColorImage);
+  indexedColorImages.forEach((image) =>
+    gifWriter.writeTableBasedImageWithGraphicControl(image, {
+      delayTimeInMS: 500,
+    })
+  );
   gifWriter.writeTrailer();
 }
 // Write data to file. (node.js)
