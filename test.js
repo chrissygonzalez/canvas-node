@@ -1,27 +1,65 @@
+var express = require('express');
+const app = express();
+const port = 8000;
+
 const gw = require('gif-writer');
 const IndexedColorImage = gw.IndexedColorImage;
 const MedianCutColorReducer = gw.MedianCutColorReducer;
 const fs = require('fs');
+
 const { createCanvas, loadImage } = require('canvas');
 const canvas = createCanvas(500, 500);
 const ctx = canvas.getContext('2d');
 
-const pumpkin = loadImage('./assets/pumpkin.jpg');
-console.log('here');
-console.log(pumpkin);
-let indexedColorImage;
+var multer = require('multer');
+var storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads');
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  },
+});
+var upload = multer({ storage: storage });
 
-pumpkin
-  .then((img) => {
-    ctx.drawImage(img, 0, 0);
-    const pumpkinData = ctx.getImageData(0, 0, img.width, img.height);
-    indexedColorImage = convertImgDataToIndexedColorImage(pumpkinData, 255);
-    writeGifData();
-    writeDataToFile();
-  })
-  .catch((err) => {
-    console.log('oh no!', err);
-  });
+app.get('/', (req, res) => {
+  res.send('hello people');
+});
+app.listen(port, () => {
+  console.log('listening to the port: ' + port);
+});
+
+app.post('/single', upload.single('testUpload'), (req, res) => {
+  try {
+    res.send(req.file);
+    console.log(req.file.path);
+    addUploadedImageToCanvas(req.file.path);
+  } catch (err) {
+    res.send(400);
+  }
+});
+
+function addUploadedImageToCanvas(path) {
+  const imageUpload = loadImage(path);
+  console.log('here');
+  console.log(imageUpload);
+  let indexedColorImage;
+
+  imageUpload
+    .then((img) => {
+      ctx.drawImage(img, 0, 0);
+      const imageUploadData = ctx.getImageData(0, 0, img.width, img.height);
+      indexedColorImage = convertImgDataToIndexedColorImage(
+        imageUploadData,
+        255
+      );
+      writeGifData(indexedColorImage);
+      writeDataToFile('new.gif');
+    })
+    .catch((err) => {
+      console.log('oh no!', err);
+    });
+}
 
 function convertImgDataToIndexedColorImage(imgData, paletteSize) {
   var reducer = new MedianCutColorReducer(imgData, paletteSize);
@@ -57,7 +95,7 @@ var MyOutputStream = /** @class */ (function () {
 var outputStream = new MyOutputStream();
 
 // Write GIF data to outputStream.
-function writeGifData() {
+function writeGifData(indexedColorImage) {
   console.log('writing gif data');
   var gifWriter = new gw.GifWriter(outputStream);
   gifWriter.writeHeader();
@@ -69,10 +107,10 @@ function writeGifData() {
   gifWriter.writeTrailer();
 }
 // Write data to file. (node.js)
-function writeDataToFile() {
+function writeDataToFile(newName) {
   console.log('writing data to file');
   var buf = Buffer.from(outputStream.buffer);
-  fs.writeFile('test.gif', buf, function (err) {
+  fs.writeFile(`${newName}`, buf, function (err) {
     if (err) console.log(err);
     else console.log("It's saved!");
   });
