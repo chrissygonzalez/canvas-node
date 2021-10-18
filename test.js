@@ -33,13 +33,30 @@ app.post('/single', upload.single('testUpload'), (req, res) => {
   try {
     res.send(req.file);
     console.log(req.file.path);
-    addUploadedImageToCanvas(req.file.path);
+    addUploadedImageToCanvas(req.file.path, flashSkull);
   } catch (err) {
     res.send(400);
   }
 });
 
-function addUploadedImageToCanvas(path) {
+const flashSkull = (ctx, imageDataList, imageWidth, imageHeight) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const skull = loadImage('./assets/skull_192.png');
+      console.log('skull', skull);
+      skull.then((skullImage) => {
+        console.log('skullImage', skullImage);
+        ctx.drawImage(skullImage, 0, 0, imageWidth, imageHeight);
+        imageDataList.push(ctx.getImageData(0, 0, imageWidth, imageHeight));
+        resolve();
+      });
+    } catch (err) {
+      reject();
+    }
+  });
+};
+
+function addUploadedImageToCanvas(path, animationFunction) {
   const imageUpload = loadImage(path);
   console.log('here');
   console.log(imageUpload);
@@ -52,19 +69,21 @@ function addUploadedImageToCanvas(path) {
       ctx.drawImage(img, 0, 0);
       imageDataList.push(ctx.getImageData(0, 0, imageWidth, imageHeight));
 
-      ctx.beginPath();
-      ctx.moveTo(75, 50);
-      ctx.lineTo(100, 75);
-      ctx.lineTo(100, 25);
-      ctx.fill();
-      imageDataList.push(ctx.getImageData(0, 0, img.width, img.height));
+      let animationFunctionPromise = flashSkull(
+        ctx,
+        imageDataList,
+        imageWidth,
+        imageHeight
+      );
+      // console.log('flashSkullPromise', flashSkullPromise);
+      animationFunctionPromise.then(() => {
+        const indexedColorImages = imageDataList.map((image) => {
+          return convertImgDataToIndexedColorImage(image, 255);
+        });
 
-      const indexedColorImages = imageDataList.map((image) => {
-        return convertImgDataToIndexedColorImage(image, 255);
+        writeGifData(imageWidth, imageHeight, indexedColorImages);
+        writeDataToFile('assets/new.gif'); //TODO: write function to take original name and add .gif
       });
-
-      writeGifData(imageWidth, imageHeight, indexedColorImages);
-      writeDataToFile('assets/new.gif'); //TODO: write function to take original name and add .gif
     })
     .catch((err) => {
       console.log('oh no!', err);

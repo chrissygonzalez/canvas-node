@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Spookify</title>
+  </head>
+  <body>
+    <h1>Spookify</h1>
+    <form
+      action="/localhost:8000/single"
+      enctype="multipart/form-data"
+      method="post"
+    >
+      <div class="form-group">
+        <input type="file" class="form-control-file" name="uploaded_file" />
+        <input type="submit" value="Submit image" class="btn btn-default" />
+      </div>
+    </form>
+  </body>
+</html>
